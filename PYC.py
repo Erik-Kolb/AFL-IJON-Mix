@@ -51,7 +51,8 @@ class TypeVisitor(c_ast.NodeVisitor):
 c_source_file = 'MP4Media.c'
 
 # Parse the C code and generate the AST
-ast = parse_file(c_source_file, use_cpp=True)
+ast = parse_file(c_source_file, use_cpp=True, cpp_args =['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
+                   '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
 
 # Create an instance of the TypeVisitor and visit the AST
 type_visitor = TypeVisitor()
