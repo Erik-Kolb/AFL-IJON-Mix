@@ -29,7 +29,7 @@ class TypeVisitor(c_ast.NodeVisitor):
 
     def get_data_type(self, type_node):
         if isinstance(type_node, c_ast.TypeDecl):
-           return self.get_data_type(type_node.type)
+            return self.get_data_type(type_node.type)
         elif isinstance(type_node, c_ast.ArrayDecl):
             element_type = self.get_data_type(type_node.type)
             array_size = self.get_array_size(type_node.dim)
@@ -38,7 +38,7 @@ class TypeVisitor(c_ast.NodeVisitor):
             pointed_type = self.get_data_type(type_node.type)
             return f"{pointed_type} *"
         else:
-            return type_node.names[0]
+            return self.get_data_type(type_node)
 
     def get_array_size(self, dim_node):
         if dim_node is None:
@@ -48,21 +48,12 @@ class TypeVisitor(c_ast.NodeVisitor):
         return 'unknown_size'  # Handle cases where the array size is not a constant
 
 # Specify the path to your C source file
-c_source_file = 'MP4Media.c'
+c_source_file = 'example.c'
 
 # Parse the C code and generate the AST
-with open(c_source_file, 'r') as file:
-        for line in file:
-            # Skip lines that are #include statements
-            if line.lstrip().startswith('#include'):
-                continue
-
-            # Parse the C code and generate the AST for non-#include lines
-            ast = parse_file(c_source_file, use_cpp=True)
-          
-            # Create an instance of the TypeVisitor and visit the AST
-            type_visitor = TypeVisitor()
-            type_visitor.visit(ast)
+ast = parse_file(c_source_file, use_cpp=True,
+        cpp_args =['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
+                   '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
 
 # Create an instance of the TypeVisitor and visit the AST
 type_visitor = TypeVisitor()
