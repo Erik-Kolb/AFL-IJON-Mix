@@ -3,6 +3,7 @@ from pycparser import c_ast, parse_file
 class TypeVisitor(c_ast.NodeVisitor):
     def __init__(self):
         self.current_function = None
+        self.variable_info = {}  # Dictionary to store variable information
 
     def visit_FuncDef(self, node):
         self.current_function = node.decl.name
@@ -10,14 +11,30 @@ class TypeVisitor(c_ast.NodeVisitor):
         self.current_function = None
 
     def visit_Decl(self, node):
-        if isinstance(node.type, c_ast.TypeDecl):
-            data_type = self.get_data_type(node.type)
-            identifier = node.name
-            print(f"Variable '{identifier}' has data type: {data_type}")
+        try:
+            if isinstance(node.type, c_ast.TypeDecl):
+                data_type = self.get_data_type(node.type)
+                identifier = node.name
+                line, column = node.coord.line, node.coord.column
 
-            # Check if the variable is an input to the current function
-            if self.current_function is not None:
-                self.check_function_argument(node)
+                # Check if the variable name contains any of the specified strings
+                special_names = ['Length', 'length', 'Len', 'len', 'consumed', 'Consumed']
+                if any(name in identifier for name in special_names):
+                    print(f"Possible variable for IJON annotation: {identifier}")
+
+                print(f"Variable '{identifier}' has data type: {data_type}, declared at line {line}, column {column}")
+
+                # Check if the variable is an input to the current function
+                if self.current_function is not None:
+                    self.check_function_argument(node)
+
+                # Update variable_info dictionary
+                if identifier in self.variable_info:
+                    self.variable_info[identifier] = (data_type, self.variable_info[identifier][1] + 1)
+                else:
+                    self.variable_info[identifier] = (data_type, 1)
+        except Exception as e:
+            print(f"Error processing variable declaration: {e}")
 
     def check_function_argument(self, variable_node):
         if self.current_function is not None:
@@ -51,9 +68,21 @@ class TypeVisitor(c_ast.NodeVisitor):
 c_source_file = 'MP4Media.c'
 
 # Parse the C code and generate the AST
-ast = parse_file(c_source_file, use_cpp=True, cpp_args =['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
-                   '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
+ast = parse_file(c_source_file, use_cpp=True, cpp_args=['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
+                                                        '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
 
 # Create an instance of the TypeVisitor and visit the AST
 type_visitor = TypeVisitor()
-type_visitor.visit(ast)
+
+# Display the variable information even if an error occurs during traversal
+try:
+    type_visitor.visit(ast)
+except Exception as e:
+    print(f"Error during AST traversal: {e}")
+
+# Print the variable information stored in the dictionary
+print("\nVariable Information:")
+for variable, info in type_visitor.variable_info.items():
+    data_type, count = info
+    print(f"Variable '{variable}': Data type - {data_type}, Count - {count}")
+
