@@ -24,7 +24,7 @@ class AssignmentVisitor(c_ast.NodeVisitor):
 class TypeVisitor(c_ast.NodeVisitor):
     def __init__(self):
         self.variable_info = {}  # Dictionary to store variable information
-
+    
     def visit_Decl(self, node):
         try:
             if isinstance(node.type, c_ast.TypeDecl):
@@ -37,7 +37,7 @@ class TypeVisitor(c_ast.NodeVisitor):
 
         except Exception as e:
             pass
-
+    
     def get_data_type(self, type_node):
         if isinstance(type_node, c_ast.TypeDecl):
            return self.get_data_type(type_node.type)
@@ -60,7 +60,7 @@ def find_assignments(file_path):
 def find_types(file_path):
     ast = parse_file(file_path, use_cpp=True, cpp_args=['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
                                                         '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
-
+    
     type_visitor = TypeVisitor()
     try:
         type_visitor.visit(ast)
@@ -83,8 +83,16 @@ if __name__ == "__main__":
                 print(f"{variable} assigned at line {line}")
     else:
         print("No variable assignments found.")
+    
 
+    special_strings = ["Length", "length", "Len", "len", "consumed", "Consumed"]
+    for variable_name in types.keys():
+        if any(s in variable_name for s in special_strings):
+            print(f"This is a possible IJON variable: {variable_name}")
+
+    
     user_input = input("To check a variable type, type the variable name. Else type 'Done': ")
     while user_input != 'Done':
         print(types[user_input])
         user_input = input("Next Variable: ")
+
