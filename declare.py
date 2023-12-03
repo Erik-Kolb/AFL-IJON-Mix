@@ -16,6 +16,7 @@ class TypeVisitor(c_ast.NodeVisitor):
                 data_type = self.get_data_type(node.type)
                 identifier = node.name
                 line, column = node.coord.line, node.coord.column
+
                 print(f"Variable '{identifier}' has data type: {data_type}, declared at line {line}, column {column}")
 
                 # Check if the variable is an input to the current function
@@ -27,6 +28,7 @@ class TypeVisitor(c_ast.NodeVisitor):
                     self.variable_info[identifier] = (data_type, self.variable_info[identifier][1] + 1)
                 else:
                     self.variable_info[identifier] = (data_type, 1)
+
         except Exception as e:
             print(f"Error processing variable declaration: {e}")
 
@@ -74,9 +76,16 @@ try:
 except Exception as e:
     print(f"Error during AST traversal: {e}")
 
-# Print the variable information stored in the dictionary
+# Check keys of the variable_info dictionary for specified strings
+special_strings = ["Length", "length", "Len", "len", "consumed", "Consumed"]
+for variable_name in type_visitor.variable_info.keys():
+    if any(s in variable_name for s in special_strings):
+        print(f"This is a possible IJON variable: {variable_name}")
+
 print("\nVariable Information:")
 for variable, info in type_visitor.variable_info.items():
     data_type, count = info
-    print(f"Variable '{variable}': Data type - {data_type}, Count - {count}")
+    print(f"Variable '{variable}': Data type - {data_type}, Count - {count}")# Check if the count is 6 or above
+    if count >= 6:
+        print(f"This could be an incremented IJON variable based on the amount of times used in the program.")
 
