@@ -46,6 +46,18 @@ class TypeVisitor(c_ast.NodeVisitor):
             return str(pointed_type)
         else:
             return type_node.names[0]
+        
+class ArrayReferenceVisitor(c_ast.NodeVisitor):
+    def visit_ArrayRef(self, node):
+        print(f"Array reference found at line: {node.coord.line}: {node.name.name}")
+
+
+def find_array_references(file_path):
+
+    ast = parse_file(file_path, use_cpp=True, cpp_args=['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
+                                                        '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
+    visitor = ArrayReferenceVisitor()
+    visitor.visit(ast)
 
 
 def find_assignments(file_path):
@@ -89,10 +101,30 @@ if __name__ == "__main__":
     for variable_name in types.keys():
         if any(s in variable_name for s in special_strings):
             print(f"This is a possible IJON variable: {variable_name}")
+    
+    find_array_references(file_path)
 
     
     user_input = input("To check a variable type, type the variable name. Else type 'Done': ")
     while user_input != 'Done':
         print(types[user_input])
         user_input = input("Next Variable: ")
+
+    ask_for_IJON = input("Would you like to add an IJON annotation anywhere? Answer Yes or No: ")
+
+    if ask_for_IJON == "Yes":
+        line_num = int(input("Which line would you like to annotate: "))
+        annotation = input("What is the annotation: ")
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+        
+        lines.insert((line_num-1), annotation)
+
+        with open(file_path, 'w') as file:
+            file.writelines(lines)
+
+
+
+
+
 
