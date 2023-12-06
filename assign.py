@@ -88,19 +88,23 @@ if __name__ == "__main__":
     assignments = find_assignments(file_path)
     types = find_types(file_path)
 
+    assign_Dict = {}
+
     if assignments:
         print("Variable assignments found:")
         for variable, line in assignments:
             if str(variable) != "err" and str(variable) != "i":
-                print(f"{variable} assigned at line {line}")
+                special_strings = ["Length", "length", "Len", "len", "consumed", "Consumed"]
+                if any(s in variable for s in special_strings):
+                    print(f"{variable} assigned at line {line}")
     else:
         print("No variable assignments found.")
     
 
-    special_strings = ["Length", "length", "Len", "len", "consumed", "Consumed"]
-    for variable_name in types.keys():
-        if any(s in variable_name for s in special_strings):
-            print(f"This is a possible IJON variable: {variable_name}")
+    # special_strings = ["Length", "length", "Len", "len", "consumed", "Consumed"]
+    # for variable_name in types.keys():
+    #     if any(s in variable_name for s in special_strings):
+    #         print(f"This is a possible IJON variable: {variable_name}")
     
     find_array_references(file_path)
 
@@ -122,9 +126,3 @@ if __name__ == "__main__":
 
         with open(file_path, 'w') as file:
             file.writelines(lines)
-
-
-
-
-
-
