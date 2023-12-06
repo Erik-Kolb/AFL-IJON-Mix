@@ -25,3 +25,7 @@ int main() {
 
     return 0;
 }
+
+
+
+#Add a couple lines that account for the null definitions found. 
