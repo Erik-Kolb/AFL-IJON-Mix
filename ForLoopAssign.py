@@ -22,13 +22,14 @@ class ForLoopVariableExtractor(c_ast.NodeVisitor):
             self.visit(node.stmt)
 
     def visit_Assignment(self, node):
-        # Check if the assignment is within a for loop
-        if any(isinstance(node, cls) for cls in [c_ast.For, c_ast.While, c_ast.DoWhile]): #Check the list
-            if isinstance(node.lvalue, c_ast.ID):
-                variable_name = node.lvalue.name #Check
-                self.variables_assigned_in_for.add(variable_name)
-        # Continue traversal
-        self.generic_visit(node)
+    # Check if the assignment is within a loop
+    if any(isinstance(parent, cls) for cls in [c_ast.For, c_ast.While, c_ast.DoWhile] for parent in node.parents):
+        if isinstance(node.lvalue, c_ast.ID):
+            variable_name = node.lvalue.name
+            self.variables_assigned_in_for.add(variable_name)
+    # Continue traversal
+    self.generic_visit(node)
+
 
 def extract_for_loop_variables(file_path):
     ast = parse_file(file_path, use_cpp=True, cpp_args=['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
