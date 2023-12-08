@@ -15,6 +15,10 @@ int main() {
         printf("Value at index %d: %d\n", i, tempVar);
     }
 
+    // Assigning variables to NULL
+    int* pointerVar = NULL;  // Assuming a pointer variable
+    char* stringVar = NULL;  // Assuming a string variable
+
     // Function call with a defined variable
     int length = calculateLength(myArray, 5);
     printf("Length of the array: %d\n", length);
@@ -26,6 +30,3 @@ int main() {
     return 0;
 }
 
-
-
-#Add a couple lines that account for the null definitions found. 
