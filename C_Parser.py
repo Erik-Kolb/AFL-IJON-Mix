@@ -1,60 +1,176 @@
-from pycparser import c_ast, parse_file
+from pycparser import parse_file, c_ast
+
+class AssignmentVisitor(c_ast.NodeVisitor):
+    def __init__(self):
+        self.assignments = []
+
+    def visit_Assignment(self, node):
+        if isinstance(node.lvalue, c_ast.ID):
+            variable_name = node.lvalue.name
+            assignment_line = node.coord.line
+            variable_val = node.rvalue
+            if isinstance(node.rvalue, c_ast.Constant):
+                pass
+            else:
+                self.assignments.append((variable_name, assignment_line))
+
+
+
+            # Add the variable and its data type to the dictionary and gives assinments and line of assignment
+            #if not(isinstance(node.rvalue, c_ast.ID) and node.rvalue.name == "NULL"):
+              #  right_val = node.rvalue.name
+               # self.assignments.append((variable_name, assignment_line))
+                #print("variable " + str(variable_name) + " has value " + str(right_val))
+        self.generic_visit(node)
+
+class NullVisitor(c_ast.NodeVisitor):
+    def __init__(self):
+        self.nulls = []
+
+    def visit_Constants(self, node):
+        if isinstance(node.rvalue, c_ast.Constant):
+            value = str(node.rvalue.value)
+            if value == "NULL":
+                pass
 
 class TypeVisitor(c_ast.NodeVisitor):
     def __init__(self):
-        self.current_function = None
-
-    def visit_FuncDef(self, node):
-        self.current_function = node.decl.name
-        self.generic_visit(node)
-        self.current_function = None
+        self.variable_info = {}  # Dictionary to store variable information
 
     def visit_Decl(self, node):
-        if isinstance(node.type, c_ast.TypeDecl):
-            data_type = self.get_data_type(node.type)
-            identifier = node.name
-            print(f"Variable '{identifier}' has data type: {data_type}")
+        try:
+            if isinstance(node.type, c_ast.TypeDecl):
+                data_type = self.get_data_type(node.type)
+                identifier = node.name
 
-            # Check if the variable is an input to the current function
-            if self.current_function is not None:
-                self.check_function_argument(node)
+                # Update variable_info dictionary
+                if identifier not in self.variable_info:
+                    self.variable_info[identifier] = data_type
 
-    def check_function_argument(self, variable_node):
-        if self.current_function is not None:
-            for parent in variable_node.parents:
-                if isinstance(parent, c_ast.FuncCall) and parent.name.name == self.current_function:
-                    args = parent.args.exprs if parent.args else []
-                    if variable_node in args:
-                        print(f"Variable '{variable_node.name}' is an input to function '{self.current_function}'")
+        except Exception as e:
+            pass
 
     def get_data_type(self, type_node):
         if isinstance(type_node, c_ast.TypeDecl):
-            return self.get_data_type(type_node.type)
-        elif isinstance(type_node, c_ast.ArrayDecl):
-            element_type = self.get_data_type(type_node.type)
-            array_size = self.get_array_size(type_node.dim)
-            return f"{element_type}[{array_size}]"
+           return self.get_data_type(type_node.type)
         elif isinstance(type_node, c_ast.PtrDecl):
             pointed_type = self.get_data_type(type_node.type)
-            return f"{pointed_type} *"
+            return str(pointed_type)
         else:
-            return self.get_data_type(type_node)
+            return type_node.names[0]
 
-    def get_array_size(self, dim_node):
-        if dim_node is None:
-            return ''
-        if isinstance(dim_node, c_ast.Constant):
-            return dim_node.value
-        return 'unknown_size'  # Handle cases where the array size is not a constant
+class ArrayReferenceVisitor(c_ast.NodeVisitor):
+    def visit_ArrayRef(self, node):
+        print(f"Array reference found at line: {node.coord.line}: {node.name.name}")
 
-# Specify the path to your C source file
-c_source_file = 'example.c'
+class FunctionArgumentChecker(c_ast.NodeVisitor):
+    def __init__(self):
+        self.function_calls_with_variables = []
 
-# Parse the C code and generate the AST
-ast = parse_file(c_source_file, use_cpp=True,
-        cpp_args =['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
-                   '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
+    def visit_FuncCall(self, node):
+        if isinstance(node.args, c_ast.ExprList):
+            for arg in node.args.exprs:
+                if isinstance(arg, c_ast.ID):
+                    self.function_calls_with_variables.append((node.name.name, arg.name))
+        self.generic_visit(node)
+        
+class ForLoopVisitor(c_ast.NodeVisitor):
+    def visit_For(self, node):
+        if isinstance(node, c_ast.For):
+            for i in node.stmt:
+                if isinstance(i, c_ast.Assignment):
+                    variable_name = i.lvalue.name
+                    assignment_line = i.coord.line
+                    print("In a for loop, variable: " + str(variable_name) + " is assigned at line: " + str(assignment_line))
 
-# Create an instance of the TypeVisitor and visit the AST
-type_visitor = TypeVisitor()
-type_visitor.visit(ast)
+class WhileLoopVisitor(c_ast.NodeVisitor):
+    def visit_While(self, node):
+        if isinstance(node, c_ast.While):
+            for i in node.stmt:
+                if isinstance(i, c_ast.Assignment):
+                    variable_name = i.lvalue.name
+                    assignment_line = i.coord.line
+                    print("In a while loop, variable: " + str(variable_name) + " is assigned as line: " + str(assignment_line))
+
+def check_function_arguments(file_path):
+    ast = parse_file(file_path, use_cpp=True, cpp_args=['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
+                                                        '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
+    function_argument_checker = FunctionArgumentChecker()
+    function_argument_checker.visit(ast)
+
+    print("Function calls with variables as arguments:")
+    for function, variable in function_argument_checker.function_calls_with_variables:
+        print(f"{function} called with variable {variable}")
+
+
+
+def find_array_references(file_path):
+
+    ast = parse_file(file_path, use_cpp=True, cpp_args=['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
+                                                        '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
+    visitor = ArrayReferenceVisitor()
+    visitor.visit(ast)
+
+
+def find_assignments(file_path):
+    ast = parse_file(file_path, use_cpp=True, cpp_args=['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
+                                                        '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
+    assignment_visitor = AssignmentVisitor()
+    assignment_visitor.visit(ast)
+
+    return assignment_visitor.assignments
+
+def find_types(file_path):
+    ast = parse_file(file_path, use_cpp=True, cpp_args=['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
+                                                        '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
+
+    type_visitor = TypeVisitor()
+    try:
+        type_visitor.visit(ast)
+    except Exception as e:
+        pass
+
+    return type_visitor.variable_info
+
+def for_assigns(file_path):
+    ast = parse_file(file_path, use_cpp=True, cpp_args=['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
+                                                        '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
+    for_loop_visitor = ForLoopVisitor()
+    for_loop_visitor.visit(ast)
+
+def while_assigns(file_path):
+    ast = parse_file(file_path, use_cpp=True, cpp_args=['-I/home/ek/Documents/CS489/pycparser/utils/fake_libc_include',
+                                                        '-I/home/ek/Documents/CS489/isobmff/IsoLib/libisomediafile/linux'])
+    while_loop_visitor = WhileLoopVisitor()
+    while_loop_visitor.visit(ast)
+    
+
+
+if __name__ == "__main__":
+    file_path = "MP4Media.c"
+
+    assignments = find_assignments(file_path)
+    types = find_types(file_path)
+
+    assign_Dict = {}
+
+    if assignments:
+        print("Variable assignments found:")
+        for variable, line in assignments:
+            if str(variable) != "err" and str(variable) != "i":
+                print(f"{variable} assigned at line {line}")
+    else:
+        print("No variable assignments found.")
+
+
+    # special_strings = ["Length", "length", "Len", "len", "consumed", "Consumed"]
+    # for variable_name in types.keys():
+    #     if any(s in variable_name for s in special_strings):
+    #         print(f"This is a possible IJON variable: {variable_name}")
+
+
+    print("Array References in the Program:")
+    find_array_references(file_path)
+
+    print("Function Calls within the Program:")
+    check_function_arguments(file_path)
